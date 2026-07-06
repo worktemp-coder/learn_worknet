@@ -1,4 +1,5 @@
 name: Hello DevSecOps
+on:
   push:
     branches:
       - main
