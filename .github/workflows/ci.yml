@@ -67,9 +67,7 @@ jobs:
           fi
           kill $APP_PID
 
-
-
-name: Verify secret is configured
+      - name: Verify secret is configured
         env:
           APP_SECRET: ${{ secrets.MY_APP_SECRET }}
         run: |
