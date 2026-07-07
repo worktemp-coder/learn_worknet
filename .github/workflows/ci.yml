@@ -19,9 +19,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
  
-      - name: List repository files
-        run: ls -la
- 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -38,45 +35,72 @@ jobs:
             echo "ERROR: app.py not found"
             exit 1
           fi
-          echo "app.py found ✅"
+          echo "app.py found"
  
       - name: Run Flask health check
         run: |
           python app.py &
           APP_PID=$!
-          echo "Flask started with PID $APP_PID"
-          # Wait up to 15 seconds for Flask to start
           for i in {1..15}; do
             if curl -s http://localhost:5000/health > /dev/null; then
-              echo "Flask is up ✅"
+              echo "Flask is up"
               break
             fi
-            echo "Waiting for Flask... attempt $i"
+            echo "Waiting... attempt $i"
             sleep 1
           done
-          # Test the health endpoint
           RESPONSE=$(curl -s http://localhost:5000/health)
           echo "Response: $RESPONSE"
-          # Verify response contains expected field
           if echo "$RESPONSE" | grep -q "status"; then
-            echo "Health check passed ✅"
+            echo "Health check passed"
           else
-            echo "Health check failed ❌"
+            echo "Health check failed"
             kill $APP_PID
             exit 1
           fi
           kill $APP_PID
-
+ main
       - name: Verify secret is configured
         env:
           APP_SECRET: ${{ secrets.MY_APP_SECRET }}
         run: |
-          # Never print the secret value — check it exists and has content
           if [ -z "$APP_SECRET" ]; then
-            echo "ERROR: MY_APP_SECRET is not configured ❌"
+            echo "ERROR: MY_APP_SECRET is not configured"
             exit 1
           fi
-          echo "Secret is configured ✅"
+          echo "Secret is configured"
           echo "Secret length: ${#APP_SECRET} characters"
-          # GitHub automatically redacts secrets from logs
-          # but we never print them anyway — good habit
+ 
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: test
+ 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+ 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+ 
+      - name: Install Bandit
+        run: pip install bandit
+ 
+      - name: Run Bandit SAST scan
+        run: |
+          bandit -r . \
+            --exclude ./.git,./venv \
+            --severity-level medium \
+            --confidence-level medium \
+            -f txt \
+            -o bandit-report.txt || BANDIT_EXIT=$?
+          cat bandit-report.txt
+          exit ${BANDIT_EXIT:-0}
+ 
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: bandit-report.txt
