@@ -1,0 +1,17 @@
+name: Very Basic Test
+
+on:
+  push:
+    branches:
+      - main
+      - basic-yaml-test
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  say-hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Message
+        run: echo "The YAML workflow is working perfectly!"
